@@ -8,7 +8,7 @@ from scipy.optimize import curve_fit
 import util
 
 inputFn = "data/rws_ppg_classification_dataset.csv"
-outputFn = "data/train_rws_ppg_classification_dataset_gauss.csv"
+outputFn = "data/train_rws_ppg_classification_dataset.csv"
 
 startInd = 13
 endInd = 83
