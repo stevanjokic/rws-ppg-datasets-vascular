@@ -18,8 +18,9 @@ def str2arr(data_str):
     cleaned_str = re.sub(r'[\[\]\s]', '', data_str)
     return np.array([float(x) for x in cleaned_str.split(',') if x])
 
-def array2str(arr):    
-    return ','.join(map(str, arr.flatten()))
+def array2str(arr, decimals=4):
+    format_str = f"{{:.{decimals}f}}"
+    return ','.join(format_str.format(x) for x in arr.flatten())
 
 def normalize_0_1(arr):
     return (arr - np.min(arr)) / (np.max(arr) - np.min(arr))
