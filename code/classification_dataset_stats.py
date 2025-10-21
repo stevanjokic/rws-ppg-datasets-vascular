@@ -1,8 +1,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from scipy.ndimage import gaussian_filter1d
+from scipy import stats
 import os
+import json
 
 # Load dataset
 df = pd.read_csv('data/rws_ppg_classification_dataset.csv')
@@ -13,8 +16,37 @@ os.makedirs(outputFolder, exist_ok=True)
 # File prefix for all generated files
 file_prefix = "classification_dataset_"
 
+def validate_dataset(df):
+    """Comprehensive dataset validation"""
+    issues = []
+    
+    # Check for missing values
+    missing_data = df.isnull().sum()
+    if missing_data.any():
+        issues.append(f"Missing values detected: {missing_data[missing_data > 0].to_dict()}")
+    
+    # Check class balance
+    class_balance = df['class'].value_counts(normalize=True)
+    if class_balance.min() < 0.05:  # Less than 5% in any class
+        issues.append("Severe class imbalance detected")
+    
+    # Check physiological plausibility
+    implausible_hr = df[(df['hr'] < 40) | (df['hr'] > 180)]
+    if len(implausible_hr) > 0:
+        issues.append(f"Implausible HR values: {len(implausible_hr)} records")
+    
+    return issues
+
+# Run validation
+validation_issues = validate_dataset(df)
+if validation_issues:
+    print("Validation warnings:")
+    for issue in validation_issues:
+        print(f"  - {issue}")
+else:
+    print("✓ Dataset validation passed")
+
 # Filter invalid entries
-# df = df[df['app_id'] != 0]
 df = df[df['age'] >= 15]
 df = df[(df['hr'] >= 45) & (df['hr'] <= 105)]
 
@@ -44,10 +76,45 @@ num_female = gender_counts.get(1, 0)
 
 # Class distribution (percentage)
 class_counts = df['class'].value_counts(normalize=True).sort_index() * 100
-
 num_records = len(df)
 
-# Summary table
+# Statistical tests
+classes_sorted = sorted(df['class'].unique())
+
+# ANOVA for age differences between classes
+age_by_class = [df[df['class'] == cls]['age'] for cls in classes_sorted]
+f_val, p_val = stats.f_oneway(*age_by_class)
+
+# Chi-square test for gender distribution across classes
+gender_class_crosstab = pd.crosstab(df['gender'], df['class'])
+chi2, chi_p, dof, expected = stats.chi2_contingency(gender_class_crosstab)
+
+# Improved summary tables
+demographic_summary = pd.DataFrame({
+    'Variable': ['Participants', 'Records', 'Age (years)', 'Heart Rate (bpm)', 'Sex (M/F)'],
+    'Total': [
+        num_users,
+        num_records,
+        f"{age_mean:.1f} ± {age_std:.1f}",
+        f"{hr_mean:.1f} ± {hr_std:.1f}", 
+        f"{num_male}/{num_female}"
+    ],
+    'Range/Details': [
+        '',
+        '',
+        f"{age_range[0]}-{age_range[1]}",
+        f"{hr_range[0]}-{hr_range[1]}",
+        f"({num_male/num_users*100:.1f}%/{num_female/num_users*100:.1f}%)"
+    ]
+})
+
+class_distribution = pd.DataFrame({
+    'Class': class_counts.index,
+    'Percentage': [f"{val:.1f}%" for val in class_counts.values],
+    'Count': [df[df['class'] == cls].shape[0] for cls in class_counts.index]
+})
+
+# Legacy summary table for compatibility
 summary = pd.DataFrame({
     "Category": ["Age (years)", "", "", "Heart Rate (bpm)", "", "", "Sex (Male / Female)", "Users", "Records", "Class 1", "Class 2", "Class 3", "Class 4"],
     "Statistic": ["Mean ± SD", "Range", "Median [IQR]",
@@ -59,11 +126,53 @@ summary = pd.DataFrame({
               f"{class_counts.get(1, 0):.1f}%", f"{class_counts.get(2, 0):.1f}%", f"{class_counts.get(3, 0):.1f}%", f"{class_counts.get(4, 0):.1f}%"]
 })
 
-print("\nStatistical Summary:")
-print(summary.to_string(index=False))
+print(f"""
+=== DATASET CHARACTERISTICS ===
+Participants: {num_users:,}
+Records: {num_records:,}
+Age: {age_mean:.1f} ± {age_std:.1f} years ({age_range[0]}-{age_range[1]})
+Heart Rate: {hr_mean:.1f} ± {hr_std:.1f} bpm ({hr_range[0]}-{hr_range[1]})
+Sex: {num_male} male, {num_female} female
 
-# Save summary table to CSV
+=== CLASS DISTRIBUTION ===
+{class_distribution.to_string(index=False)}
+
+=== STATISTICAL TESTS ===
+Age differences (ANOVA): F={f_val:.3f}, p={p_val:.4f}
+Gender distribution (χ²): χ²={chi2:.3f}, p={chi_p:.4f}
+""")
+
+# Save all tables
+demographic_summary.to_csv(outputFolder + file_prefix + "demographic_summary.csv", index=False)
+class_distribution.to_csv(outputFolder + file_prefix + "class_distribution.csv", index=False)
 summary.to_csv(outputFolder + file_prefix + "statistical_summary.csv", index=False)
+
+# Save LaTeX formatted tables
+with open(outputFolder + file_prefix + "demographic_table.tex", "w") as f:
+    f.write(demographic_summary.to_latex(index=False, escape=False))
+    
+with open(outputFolder + file_prefix + "class_distribution_table.tex", "w") as f:
+    f.write(class_distribution.to_latex(index=False, escape=False))
+
+# Create analysis metadata
+metadata = {
+    'analysis_date': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S'),
+    'dataset_version': '1.0',
+    'total_participants': num_users,
+    'total_records': num_records,
+    'age_range': f"{age_range[0]}-{age_range[1]}",
+    'inclusion_criteria': 'age ≥ 15, HR 45-105 bpm',
+    'statistical_tests': {
+        'anova_age_f': f_val,
+        'anova_age_p': p_val,
+        'chi2_gender_chi2': chi2,
+        'chi2_gender_p': chi_p
+    }
+}
+
+# Save metadata
+with open(outputFolder + file_prefix + "analysis_metadata.json", 'w') as f:
+    json.dump(metadata, f, indent=2)
 
 # Black-and-white bar chart for publication (DPI 300)
 plt.figure(figsize=(6, 4))
@@ -88,7 +197,6 @@ plt.savefig(outputFolder + file_prefix + "class_distribution_bw.png", dpi=300, f
 plt.show()
 
 # Age histograms by class
-classes_sorted = sorted(df['class'].unique())
 fig, axes = plt.subplots(1, len(classes_sorted), figsize=(14, 4), sharey=True)
 
 for i, cls in enumerate(classes_sorted):
@@ -154,11 +262,22 @@ for idx, cls in enumerate(classes_sorted):
 
 plt.xlabel("Age (years)", fontsize=12)
 plt.ylabel("Normalized Frequency", fontsize=12)
-# plt.title("Smoothed and Normalized Age Distribution by Class", fontsize=14, weight='bold')
 plt.grid(True, linestyle='--', linewidth=0.5, axis='y', color='gray')
 plt.legend(title="Class", fontsize=10, title_fontsize=11)
 plt.tight_layout()
 plt.savefig(outputFolder + file_prefix + "smooth_normalized_age_distribution_bw.png", dpi=300, format='png', bbox_inches='tight')
+plt.show()
+
+# Correlation matrix
+correlation_matrix = df[['age', 'gender', 'hr', 'class']].corr(method='spearman')
+
+plt.figure(figsize=(5, 4))
+sns.heatmap(correlation_matrix, annot=True, cmap='gray_r', center=0,
+            square=True, fmt='.2f', cbar_kws={'shrink': 0.8})
+plt.title('Feature Correlations', fontsize=14, weight='bold')
+plt.tight_layout()
+plt.savefig(outputFolder + file_prefix + "correlation_heatmap_bw.png", 
+            dpi=300, format='png', bbox_inches='tight')
 plt.show()
 
 print("All plots and statistics have been saved to:", outputFolder)
