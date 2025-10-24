@@ -30,6 +30,13 @@ def normalize_m1_1(ppg_signal):
     min_val, max_val = np.min(ppg_signal), np.max(ppg_signal)
     return 2 * (ppg_signal - min_val) / (max_val - min_val) - 1  # Normalizacija u opseg [-1, 1]
 
+def round_results(results, decimals=4):
+    """Round all numeric values in results dictionary."""
+    for key, value in results.items():
+        if isinstance(value, (int, float, np.number)) and not np.isnan(value):
+            results[key] = round(value, decimals)
+    return results
+
 def sd3(ppg_data):
     ppg_sd = np.zeros(len(ppg_data))
     for i in range(1, len(ppg_data)-1):
@@ -99,10 +106,11 @@ def ppg_template_range(ppg, peakInd=35, hr=60, fs=100):
 
     return signalStartInd, signalEndInd
 
+""" Detect A and B points in PPG signal using second derivative analysis. """
 def detect_ab_sdppg(ppg, systolic_peak_index, ppg_start_index):
     ppg = np.asarray(ppg)
     
-    # Drugi i treći izvod
+    # Calculate second and third derivatives
     sdppg = np.zeros(len(ppg))
     for i in range(1, len(ppg) - 1):
         sdppg[i] = ppg[i - 1] - 2 * ppg[i] + ppg[i + 1]
@@ -111,37 +119,65 @@ def detect_ab_sdppg(ppg, systolic_peak_index, ppg_start_index):
     for i in range(2, len(ppg) - 2):
         d3ppg[i] = ppg[i - 2] - 2 * ppg[i - 1] + 2 * ppg[i + 1] - ppg[i + 2]
 
-    # Pik A: maksimum SDPPG između početka i sistolnog pika
+    def parabolic_interpolation(signal, idx):
+        if idx <= 0 or idx >= len(signal) - 1:
+            return idx, signal[idx]
+        
+        y0, y1, y2 = signal[idx-1], signal[idx], signal[idx+1]
+        offset = (y0 - y2) / (2 * (y0 - 2*y1 + y2))
+        refined_idx = idx + offset
+        refined_value = y1 - 0.25 * (y0 - y2) * offset
+        
+        return refined_idx, refined_value
+
+    # A-point detection: maximum in second derivative between start and systolic peak
     a_value = -np.inf
     a_index = None
+    a_detected_in_sdppg = False  # Flag indicating A detected in second derivative
+    
     for i in range(ppg_start_index + 1, systolic_peak_index - 3):
         if sdppg[i] >= sdppg[i - 1] and sdppg[i] >= sdppg[i + 1] and sdppg[i] >= a_value:
             a_value = sdppg[i]
             a_index = i
+            a_detected_in_sdppg = True
 
+    # Fallback: use third derivative zero-crossing if not found in second derivative
     if a_index is None:
         for i in range(ppg_start_index + 1, systolic_peak_index - 3):
             if d3ppg[i - 1] < 0 and d3ppg[i] >= 0 or d3ppg[i - 1] <= 0 and d3ppg[i] > 0:
                 a_index = i
                 a_value = sdppg[i]
+                a_detected_in_sdppg = False
 
     if a_index is None:
         return np.nan, np.nan, np.nan, np.nan
     
-    # Pik B: prvi nulti presek trećeg izvoda nakon A, pre sistolnog pika
+    # Apply parabolic interpolation if A-point detected in second derivative
+    if a_detected_in_sdppg and a_index is not None:
+        a_index_refined, a_value_refined = parabolic_interpolation(sdppg, a_index)
+    else:
+        a_index_refined, a_value_refined = a_index, a_value
+    
+    # B-point detection: minimum in second derivative after A-point, before systolic peak
     b_index = None
     b_value = np.inf
-    for i in range(a_index + 1, systolic_peak_index-3):
-        if sdppg[i]<=sdppg[i-1] and sdppg[i]<=sdppg[i+1] and sdppg[i]<=b_value:
+    b_detected_in_sdppg = False  # Flag indicating B detected in second derivative
+    
+    for i in range(int(a_index) + 1, systolic_peak_index - 3):
+        if sdppg[i] <= sdppg[i-1] and sdppg[i] <= sdppg[i+1] and sdppg[i] <= b_value:
             b_index = i
             b_value = sdppg[i]
+            b_detected_in_sdppg = True
             
+    # Fallback: use third derivative zero-crossing if not found in second derivative
     if b_index is None:
-        for i in range(a_index + 1, systolic_peak_index-3):
+        for i in range(int(a_index) + 1, systolic_peak_index - 3):
             if d3ppg[i - 1] > 0 and d3ppg[i] <= 0 or d3ppg[i - 1] >= 0 and d3ppg[i] < 0:
                 b_index = i
                 b_value = sdppg[i]
+                b_detected_in_sdppg = False
     
+    # Final fallback: use fourth derivative if previous methods fail
     if b_index is None:
         d4 = np.zeros_like(ppg)
         for i in range(2, len(ppg) - 2):
@@ -149,19 +185,25 @@ def detect_ab_sdppg(ppg, systolic_peak_index, ppg_start_index):
                         - 4 * ppg[i + 1] + ppg[i + 2])
         d4 = nfFilt(fc=10, fs=100, ord=5, inSig=d4)
         d4LocMax = -np.inf
-        for i in range(a_index + 1, systolic_peak_index-3):
+        for i in range(int(a_index) + 1, systolic_peak_index - 3):
             if d4[i - 1] <= d4[i] and d4[i + 1] <= d4[i] or d3ppg[i - 1] >= 0 and d4[i] >= d4LocMax:
                 b_index = i
                 b_value = sdppg[i]
                 d4LocMax = d4[i]
+                b_detected_in_sdppg = False
         
     if b_index is None:
         b_index = np.nan
         b_value = np.nan
+        b_detected_in_sdppg = False
+    else:
+        # Apply parabolic interpolation if B-point detected in second derivative
+        if b_detected_in_sdppg and b_index is not None:
+            b_index_refined, b_value_refined = parabolic_interpolation(sdppg, b_index)
+        else:
+            b_index_refined, b_value_refined = b_index, b_value
 
-    return a_index, a_value, b_index, b_value
-
-
+    return a_index_refined, a_value_refined, b_index_refined, b_value_refined
 
 def sum_of_2_gaussians(x, amp1, mean1, sigma1, amp2, mean2, sigma2):
     gauss1 = amp1 * np.exp(-(x - mean1)**2 / (2 * sigma1**2))

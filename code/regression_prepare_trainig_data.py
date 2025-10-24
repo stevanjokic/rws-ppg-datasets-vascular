@@ -33,25 +33,52 @@ def process_ppg_complete(row):
     """
     global g3errorsCnt, g3ProcessedCnt
     
-    # Initialize results dictionary with NaN values
+    # Initialize results dictionary with NaN values - DEFINED IN DESIRED ORDER
     results = {
+        # Original columns from input data
+        'id': row.get('id', np.nan),
+        'age': row.get('age', np.nan),
+        'sex': row.get('sex', np.nan),
+        'hr': row.get('hr', np.nan),
+        'rmssd': row.get('rmssd', np.nan),
+        'data_id': row.get('data_id', np.nan),
+        'app_id': row.get('app_id', np.nan),
+        'ppg_signal': row.get('ppg_signal', ''),
+        'template_ppg': row.get('template_ppg', ''),
+        'beat_corr_ratio': row.get('beat_corr_ratio', np.nan),
+        'interbeat_corr_ratio': row.get('interbeat_corr_ratio', np.nan),
+        
         # SD results
         'sd_template_ppg': '',
+        
+        # A/B point features
+        'a_index': np.nan, 'a_value': np.nan, 
+        'a_index_2start': np.nan, 'a_index_2peak': np.nan,
+        'b_index': np.nan, 'b_value': np.nan,
+        'b_index_2start': np.nan, 'b_index_2peak': np.nan,
+        'a/b_ratio': np.nan,
+        'od': np.nan, 'do': np.nan,
+        
+        # Statistical features
+        'ppg_hb': '',
+        'percentile_25': np.nan, 'percentile_75': np.nan,
+        'triangular_index': np.nan, 'mean1_2gsd': np.nan,
+        'median': np.nan, 'skewness': np.nan, 'kurtosis': np.nan,
+        'signal_length': np.nan,
         
         # 2G results
         'amp1_2g': np.nan, 'mean1_2g': np.nan, 'sigma1_2g': np.nan,
         'amp2_2g': np.nan, 'mean2_2g': np.nan, 'sigma2_2g': np.nan,
-        'gauss_fit': '', 'od': np.nan, 'do': np.nan,
-        'a_index': np.nan, 'a_value': np.nan, 'b_index': np.nan, 'b_value': np.nan,
-        'a/b_ratio': np.nan,
+        'gauss_fit': '', 'peak_distance_2g': np.nan, 'ratio_2g': np.nan,
         
         # 3G results
         'amp1_3g': np.nan, 'mean1_3g': np.nan, 'sigma1_3g': np.nan,
         'amp2_3g': np.nan, 'mean2_3g': np.nan, 'sigma2_3g': np.nan,
         'amp3_3g': np.nan, 'mean3_3g': np.nan, 'sigma3_3g': np.nan,
-        'gauss3_fit': '', 'ratio_3g_12': np.nan, 'ratio_3g_13': np.nan, 'ratio_3g_23': np.nan,
-
-        'total_area_3g' : np.nan, 'peak_distance_12' : np.nan, 'peak_distance_13' : np.nan, 'peak_distance_23' : np.nan 
+        'gauss3_fit': '', 
+        'ratio_3g_12': np.nan, 'ratio_3g_13': np.nan, 'ratio_3g_23': np.nan,
+        'total_area_3g': np.nan, 
+        'peak_distance_12': np.nan, 'peak_distance_13': np.nan, 'peak_distance_23': np.nan 
     }
     
     try:
@@ -61,7 +88,7 @@ def process_ppg_complete(row):
         
         # Apply SD5 
         sd_ppg = util.normalize_m1_1(util.sd5(ppg_array_full))
-        results['sd_template_ppg'] = util.array2str(sd_ppg)
+        results['sd_template_ppg'] = util.array2str(sd_ppg, decimals=4)
         
         # Step 2: Determine OD/DO range
         od, do = util.ppg_template_range(ppg_array_full, peakInd=sist_peak_ind, hr=row['hr'])
@@ -71,16 +98,21 @@ def process_ppg_complete(row):
         # Step 3: Detect A and B points
         a_index, a_value, b_index, b_value = util.detect_ab_sdppg(ppg_array_full, sist_peak_ind, od)
         results['a_index'] = a_index
+        results['a_index_2start'] = a_index - od
+        results['a_index_2peak'] = sist_peak_ind - a_index
         results['a_value'] = a_value
         results['b_index'] = b_index
+        results['b_index_2start'] = b_index - od
+        results['b_index_2peak'] = sist_peak_ind - b_index
         results['b_value'] = b_value
         results['a/b_ratio'] = a_value / b_value if b_value != 0 else np.nan
 
-        
-        
         # Extract and normalize the segment for Gaussian fitting
         ppg_array = ppg_array_full[od:do]
         ppg_array = util.normalize_0_1(ppg_array)
+
+        results['ppg_hb'] = util.array2str(ppg_array)
+
         x_data = np.arange(len(ppg_array))
         
         results['percentile_25'] = np.percentile(ppg_array, 25)
@@ -118,11 +150,13 @@ def process_ppg_complete(row):
         results['amp2_2g'] = params_2g[3]
         results['mean2_2g'] = params_2g[4]
         results['sigma2_2g'] = params_2g[5]
-        results['gauss_fit'] = ', '.join(map(str, util.sum_of_2_gaussians(x_data, *params_2g)))
+        results['gauss_fit'] = util.array2str(util.sum_of_2_gaussians(x_data, *params_2g), decimals=4)
+        results['peak_distance_2g'] = results['mean2_2g'] - results['mean1_2g']
+        results['ratio_2g'] = results['amp1_2g'] / results['amp2_2g'] if results['amp2_2g'] != 0 else np.nan
         
         # Step 5: Fit 3 Gaussians
         g3ProcessedCnt += 1
-        
+
         initial_guess_3g = [
             0.8,                    # amp1
             sist_peak_ind - od,     # mean1
@@ -134,7 +168,7 @@ def process_ppg_complete(row):
             sist_peak_ind - od + 24,# mean3
             8                       # sigma3
         ]
-        
+
         params_3g, _ = curve_fit(
             util.sum_of_3_gaussians,
             x_data,
@@ -143,7 +177,7 @@ def process_ppg_complete(row):
             jac=util.jacobian_3g,
             maxfev=7000
         )
-        
+
         # Store 3G results
         results['amp1_3g'] = params_3g[0]
         results['mean1_3g'] = params_3g[1]
@@ -154,20 +188,21 @@ def process_ppg_complete(row):
         results['amp3_3g'] = params_3g[6]
         results['mean3_3g'] = params_3g[7]
         results['sigma3_3g'] = params_3g[8]
-        results['gauss3_fit'] = ', '.join(map(str, util.sum_of_3_gaussians(x_data, *params_3g)))
-        results['ratio_3g_12'] = params_3g[0] / params_3g[3]  # amp1/amp2
-        results['ratio_3g_13'] = params_3g[0] / params_3g[6]  # amp1/amp3
-        results['ratio_3g_23'] = params_3g[3] / params_3g[6]  # amp2/amp3
+        results['gauss3_fit'] = util.array2str(util.sum_of_3_gaussians(x_data, *params_3g), decimals=4)
+        results['ratio_3g_12'] = params_3g[0] / params_3g[3] if params_3g[3] != 0 else np.nan  # amp1/amp2
+        results['ratio_3g_13'] = params_3g[0] / params_3g[6] if params_3g[6] != 0 else np.nan  # amp1/amp3
+        results['ratio_3g_23'] = params_3g[3] / params_3g[6] if params_3g[6] != 0 else np.nan  # amp2/amp3
 
         # Calculate additional composite features
-        # print("Calculating composite features...")
-        df['total_area_3g'] = (results['amp1_3g'] * results['sigma1_3g'] + 
-                            results['amp2_3g'] * results['sigma2_3g'] + 
-                            results['amp3_3g'] * results['sigma3_3g'])
+        results['total_area_3g'] = (results['amp1_3g'] * results['sigma1_3g'] + 
+                                results['amp2_3g'] * results['sigma2_3g'] + 
+                                results['amp3_3g'] * results['sigma3_3g'])
 
-        df['peak_distance_12'] = results['mean2_3g'] - results['mean1_3g']
-        df['peak_distance_13'] = results['mean3_3g'] - results['mean1_3g']
-        df['peak_distance_23'] = results['mean3_3g'] - results['mean2_3g']
+        results['peak_distance_12'] = results['mean2_3g'] - results['mean1_3g']
+        results['peak_distance_13'] = results['mean3_3g'] - results['mean1_3g']
+        results['peak_distance_23'] = results['mean3_3g'] - results['mean2_3g']
+                
+        results = util.round_results(results, decimals=5)
         
     except Exception as e:
         g3errorsCnt += 1
@@ -180,9 +215,10 @@ def process_ppg_complete(row):
 
 print("Processing PPG data (SD filtering + 2G + 3G fitting)...")
 all_results = df.apply(process_ppg_complete, axis=1)
-df = pd.concat([df, all_results], axis=1)
 
-# Save final results
+for col in all_results.columns:
+    df[col] = all_results[col]
+
 df.to_csv(out_fn, index=False)
 print(f"Processing complete! Final dataset saved to {out_fn}")
 print(f"Dataset shape: {df.shape}")
