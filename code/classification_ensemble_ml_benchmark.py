@@ -577,7 +577,7 @@ def statistical_comparison(summary_csv, output_txt):
 if __name__ == "__main__":
     DATA_PATH = "data/train_rws_ppg_classification_dataset.csv"
     RESULTS_DIR = "results"
-    PREFIX = "classification_ensamble_"
+    PREFIX = "classification_ensemble_"
     
     run_benchmark(DATA_PATH, RESULTS_DIR, PREFIX)
     statistical_comparison(f"{RESULTS_DIR}/{PREFIX}summary_all.csv",

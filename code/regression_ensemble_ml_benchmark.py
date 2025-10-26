@@ -687,7 +687,7 @@ def aggregate_metrics(summary_df, results_dir, prefix):
         print(f"Error in aggregating metrics: {e}")
 
 # Main pipeline with resume capability
-def run_regression_benchmark(data_path, results_dir="results", prefix="regression_ensamble_"):
+def run_regression_benchmark(data_path, results_dir="results", prefix="regression_ensemble_"):
     try:
         os.makedirs(results_dir, exist_ok=True)
         
@@ -859,7 +859,7 @@ def statistical_comparison(summary_csv, output_txt):
 if __name__ == "__main__":
     DATA_PATH = "data/train_rws_ppg_regression_dataset.csv"
     RESULTS_DIR = "results"
-    PREFIX = "regression_ensamble_"
+    PREFIX = "regression_ensemble_"
     
     run_regression_benchmark(DATA_PATH, RESULTS_DIR, PREFIX)
     statistical_comparison(f"{RESULTS_DIR}/{PREFIX}summary_all.csv",
