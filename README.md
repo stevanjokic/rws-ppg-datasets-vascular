@@ -74,6 +74,62 @@ The following scripts assess chronological age prediction performance using deep
 | `regression_dataset_stat.py` | Demographic and signal quality statistics |
 | `regression_dataset_collect.py` | Collect and balance samples for regression |
 
+## Results
+Script execution will create `results/` folder where images, csv files will be placed.  
+All pre-generated results from the paper are publicly available at: https://usp2022.epizy.com/ppg/paper/  
+
+Results folder will have files like this:
+```bash
+results/
+├── regression_dataset_table1_demographics.csv
+├── regression_dataset_table2_correlations.csv
+├── regression_dataset_table3_signal_quality.csv
+├── regression_dataset_sex_comparison_25-34.png
+├── regression_dataset_sex_comparison_75+.png
+│ ⋮
+├── regression_dl_summary_statistics.csv
+├── regression_dl_summary_statistics.tex
+├── regression_dl_signal_comparison.png
+├── regression_dl_MLP_gauss_fit_regression_results.png
+│ ⋮
+├── regression_ensamble_aggregate_metrics.csv
+├── regression_ensamble_aggregate_metrics.tex
+├── regression_ensamble_performance_report.txt
+├── regression_ensamble_XGBoost_feature_importance_fold0.png
+├── regression_ensamble_RandomForest_feature_importance_fold1.csv
+│ ⋮
+├── regression_xgboost_all_results_summary.csv
+├── regression_xgboost_all_features_predictions.png
+├── regression_xgboost_all_features_feature_importance.pdf
+│ ⋮
+├── classification_dataset_demographic_summary.csv
+├── classification_dataset_correlation_heatmap_bw.png
+├── classification_dataset_normalized_age_distribution_by_class_bw.png
+│ ⋮
+├── classification_dl_comprehensive_results.csv
+├── classification_dl_summary_statistics.tex
+├── classification_dl_CNN_template_ppg_norm_fold4_confusion_matrix.png
+├── classification_dl_MLP_sd_template_ppg_norm_fold2_roc_curve.png
+│ ⋮
+├── classification_ensamble_aggregate_metrics.csv
+├── classification_ensamble_summary_boxplots.png
+├── classification_ensamble_smote_tomek_XGBoost_feature_importance_fold4.png
+├── classification_ensamble_smoteenn_RandomForest_confusion_fold2.csv
+│ ⋮
+├── classification_xgboost_best_params.csv
+├── classification_xgboost_bootstrap_f1_ci_plot.png
+├── classification_xgboost_per_class_f1_boxplot.png
+│ ⋮
+├── benchmark_summary.csv
+├── benchmark_table.tex
+├── class_wise_performance.png
+├── confusion_matrices_comparison.png
+├── roc_curves.png
+├── metrics_plot.png
+├── environment.txt
+├── regression_statistical_significance.txt
+└── classification_statistical_significance.txt
+``` 
 
 ---
 If you use these datasets, code, or any part of this repository in your research, please cite the original paper with doi: https://doi.org/10.3390/electronics1010000
