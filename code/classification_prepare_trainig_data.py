@@ -48,9 +48,9 @@ def processrow(row):
 
     # Map class 1–4 to label 0–3
     class_label = int(row["class"]) - 1
-    
-    # Return original row data + normalized PPG template + second derivative + class label + Gaussian parameters + SPDP + AIx
-    return list(row) + [util.array2str(template_ppg_norm)] + [util.array2str(sd_ppg)] + [class_label] + list(params_2g) + [row["SPDP"], row["AIx"]] + list(params_3g)
+        
+    # Return original row data + normalized PPG template + second derivative + class label + Gaussian parameters
+    return list(row) + [util.array2str(template_ppg_norm)] + [util.array2str(sd_ppg)] + [class_label] + list(params_2g) + list(params_3g)
 
 # Load dataset
 df = pd.read_csv(inputFn)
@@ -72,7 +72,6 @@ for index, row in df.iterrows():
 columns = list(df.columns) + ["template_ppg_norm"] + ["sd_template_ppg_norm"] + ["class_label"] + [
     "amp1_2g", "mean1_2g", "sigma1_2g",
     "amp2_2g", "mean2_2g", "sigma2_2g",
-    "SPDP", "AIx",
     "amp1_3g", "mean1_3g", "sigma1_3g",
     "amp2_3g", "mean2_3g", "sigma2_3g",
     "amp3_3g", "mean3_3g", "sigma3_3g"
