@@ -30,14 +30,158 @@ data/
 ├── rws_ppg_regression_dataset.zip
 └── rws_ppg_classification_dataset.zip
 ```
-
+### Classification dataset 
 Script **code/classification_prepare_trainig_data.py** will create classification dataset **data/train_rws_ppg_classification_dataset_gauss.csv** with following columns: 
-*index,cnt,id,data_id,app_id,age,gender,hr,rmssd,class,template_ppg,ppg,class1,class2,class3,class4,template_ppg_norm,sd_template_ppg_norm,class_label,amp1_2g,mean1_2g,sigma1_2g,amp2_2g,mean2_2g,sigma2_2g,amp1_3g,mean1_3g,sigma1_3g,amp2_3g,mean2_3g,sigma2_3g,amp3_3g,mean3_3g,sigma3_3g*
+*index,cnt,id,data_id,app_id,age,gender,hr,rmssd,class,template_ppg,ppg,class1,class2,class3,class4,template_ppg_norm,sd_template_ppg_norm,class_label,SPDP,AIx,amp1_2g,mean1_2g,sigma1_2g,amp2_2g,mean2_2g,sigma2_2g,amp1_3g,mean1_3g,sigma1_3g,amp2_3g,mean2_3g,sigma2_3g,amp3_3g,mean3_3g,sigma3_3g*
 
+
+Classification Dataset columns:
+
+**Demographic & Physiological Data**
+
+| Column | Description |
+|--------|-------------|
+| `age` | Chronological age (years) |
+| `gender` | Sex (M/F) |
+| `hr` | Heart rate (bpm) |
+| `rmssd` | HRV metric (ms) |
+
+**Labels & Morphological Classes**
+
+| Column | Description |
+|--------|-------------|
+| `class` | Original class label (1–4) |
+| `class_label` | Internal ML label (0–3) |
+| `class1` – `class4` | One-hot encoded class indicators |
+
+**PPG Signals (Normalized)**
+
+| Column | Description |
+|--------|-------------|
+| `template_ppg` | Original PPG template (string → array) |
+| `ppg` | Original raw PPG signal |
+| `template_ppg_norm` | Normalized PPG template [0, 1] |
+| `sd_template_ppg_norm` | Normalized second derivative [−1, 1] |
+
+**Vascular Parameters**
+
+| Column | Description |
+|--------|-------------|
+| `SPDP` | Time from systolic peak to diastolic peak (ms) |
+| `AIx` | Augmentation Index (%) |
+
+**Gaussian Parameters – 2‑Component Model**
+
+| Column | Description |
+|--------|-------------|
+| `amp1_2g`, `mean1_2g`, `sigma1_2g` | First Gaussian (systolic wave) |
+| `amp2_2g`, `mean2_2g`, `sigma2_2g` | Second Gaussian (diastolic wave) |
+
+**Gaussian Parameters – 3‑Component Model**
+
+| Column | Description |
+|--------|-------------|
+| `amp1_3g`, `mean1_3g`, `sigma1_3g` | First Gaussian (systolic wave) |
+| `amp2_3g`, `mean2_3g`, `sigma2_3g` | Second Gaussian (diastolic wave) |
+| `amp3_3g`, `mean3_3g`, `sigma3_3g` | Third Gaussian (late diastolic / reflected wave) |
+
+**Notes**
+
+- All parameters are **numeric** and ready for machine learning models
+- Gaussian parameters are **grouped by component count** for easy feature selection
+- `SPDP_ms` and `AIx_percent` are **automatically computed** during preprocessing **Output Parameters – Classification Dataset**
+
+### Regression dataset
 Script **code/regression_prepare_trainig_data.py** will create regression dataset **data/train_rws_ppg_classification_dataset_gauss.csv** with following columns: 
 *id,age,sex,hr,rmssd,data_id,app_id,ppg_signal,template_ppg,beat_corr_ratio,interbeat_corr_ratio,total_area_3g,peak_distance_12,peak_distance_13,peak_distance_23,sd_template_ppg,amp1_2g,mean1_2g,sigma1_2g,amp2_2g,mean2_2g,sigma2_2g,gauss_fit,od,do,a_index,a_value,b_index,b_value,a/b_ratio,amp1_3g,mean1_3g,sigma1_3g,amp2_3g,mean2_3g,sigma2_3g,amp3_3g,mean3_3g,sigma3_3g,gauss3_fit,ratio_3g_12,ratio_3g_13,ratio_3g_23,total_area_3g,peak_distance_12,peak_distance_13,peak_distance_23,percentile_25,percentile_75,triangular_index,mean1_2gsd,median,skewness,kurtosis,signal_length*
 
-**Expected structure after extraction:**
+
+
+After running `code/regression_prepare_trainig_data.py`, the generated CSV file contains the following columns.  
+Only columns **not already described** in the Classification Dataset section are listed below.
+
+Regression Dataset columns:
+
+**Record Identifiers**
+
+| Column | Description |
+|--------|-------------|
+| `id` | Unique subject identifier |
+| `data_id` | Recording session identifier |
+| `app_id` | Application version / device identifier |
+
+**Signal Quality Metrics**
+
+| Column | Description |
+|--------|-------------|
+| `beat_corr_ratio` | Mean beat‑to‑template Pearson correlation – higher values indicate better morphological consistency |
+| `interbeat_corr_ratio` | Mean inter‑beat Pearson correlation – higher values indicate better temporal stability |
+
+**SD‑Transformed Signal**
+
+| Column | Description |
+|--------|-------------|
+| `sd_template_ppg` | Second derivative (SD5) of the PPG template, normalized to [−1, 1] |
+
+**Pulse Onset / Offset Detection**
+
+| Column | Description |
+|--------|-------------|
+| `od` | Index of pulse onset (start of cardiac cycle) |
+| `do` | Index of pulse offset (end of cardiac cycle) |
+
+**A/B Point Features (Second Derivative Landmarks)**
+
+| Column | Description |
+|--------|-------------|
+| `a_index` | A‑point index (maximum of second derivative, corresponds to early systole) |
+| `a_value` | Amplitude at A‑point |
+| `b_index` | B‑point index (minimum of second derivative after A‑point, corresponds to diastolic peak) |
+| `b_value` | Amplitude at B‑point |
+| `a/b_ratio` | Ratio of A‑point to B‑point amplitude |
+| `a_index_2start` | A‑point distance from pulse onset (od) |
+| `a_index_2peak` | A‑point distance from systolic peak |
+| `b_index_2start` | B‑point distance from pulse onset (od) |
+| `b_index_2peak` | B‑point distance from systolic peak |
+
+**Statistical Waveform Descriptors**
+
+| Column | Description |
+|--------|-------------|
+| `ppg_hb` | Normalized single cardiac cycle segment [0, 1] extracted from [od:do] |
+| `percentile_25` | 25th percentile of the normalized PPG segment |
+| `percentile_75` | 75th percentile of the normalized PPG segment |
+| `triangular_index` | (Area / length) / (peak amplitude) – a measure of waveform flatness |
+| `mean1_2gsd` | Mean / standard deviation of the PPG segment |
+| `median` | Median amplitude of the PPG segment |
+| `skewness` | Skewness of the PPG amplitude distribution |
+| `kurtosis` | Kurtosis of the PPG amplitude distribution |
+| `signal_length` | Length of the cardiac cycle segment (samples) |
+
+**Gaussian Model Features – Additional Derived Metrics**
+
+| Column | Description |
+|--------|-------------|
+| `gauss_fit` | 2‑Gaussian reconstruction of the PPG waveform (string → array) |
+| `gauss3_fit` | 3‑Gaussian reconstruction of the PPG waveform (string → array) |
+| `peak_distance_2g` | Distance between the two Gaussian peaks (mean2_2g – mean1_2g) |
+| `ratio_2g` | Amplitude ratio (amp1_2g / amp2_2g) |
+| `ratio_3g_12` | Amplitude ratio of first to second Gaussian (amp1_3g / amp2_3g) |
+| `ratio_3g_13` | Amplitude ratio of first to third Gaussian (amp1_3g / amp3_3g) |
+| `ratio_3g_23` | Amplitude ratio of second to third Gaussian (amp2_3g / amp3_3g) |
+| `total_area_3g` | Sum of (amplitude × sigma) for all three Gaussians – proxy for total pulse area |
+| `peak_distance_12` | Distance between first and second Gaussian peaks (mean2_3g – mean1_3g) |
+| `peak_distance_13` | Distance between first and third Gaussian peaks (mean3_3g – mean1_3g) |
+| `peak_distance_23` | Distance between second and third Gaussian peaks (mean3_3g – mean2_3g) |
+
+**Notes**
+
+- All parameters are **numeric** and ready for machine learning models
+- Columns **common to both datasets** (age, sex, hr, rmssd, Gaussian parameters, etc.) are **not repeated** here – see Classification Dataset section above
+- `SPDP` and `AIx` are **not present** in the regression dataset; vascular parameters for regression are derived from A/B points and Gaussian features
+- String‑encoded arrays (`ppg_hb`, `gauss_fit`, `gauss3_fit`) can be converted back to numpy arrays using `util.str2arr()`
+
+### Expected structure after extraction and execution preparation scripts:
 ```bash
 data/
 ├── train_rws_ppg_regression_dataset.csv

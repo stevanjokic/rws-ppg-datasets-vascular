@@ -4,6 +4,7 @@ import os
 import re
 import numpy as np
 from scipy import signal
+from scipy.signal import savgol_filter
 from sklearn.metrics import average_precision_score, classification_report, confusion_matrix, f1_score, precision_score, recall_score, matthews_corrcoef, roc_curve, auc, precision_recall_curve, precision_recall_fscore_support, confusion_matrix, accuracy_score
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -204,6 +205,39 @@ def detect_ab_sdppg(ppg, systolic_peak_index, ppg_start_index):
             b_index_refined, b_value_refined = b_index, b_value
 
     return a_index_refined, a_value_refined, b_index_refined, b_value_refined
+
+def calculate_spdp_aix(ppg_signal, fs, hr):
+    ppg_signal = np.array(ppg_signal)
+    N = len(ppg_signal)
+    dx = 1.0 / fs
+    rr_samples = int((60 / hr) * fs)
+        
+    win, poly = (11 if N > 11 else 5), 3
+    ppg_s = savgol_filter(ppg_signal, win, poly)
+    
+    d1 = savgol_filter(np.gradient(ppg_s, dx), win, poly)
+    d2 = savgol_filter(np.gradient(d1, dx), win, poly)
+    d3 = savgol_filter(np.gradient(d2, dx), win, poly)
+    d4 = savgol_filter(np.gradient(d3, dx), win, poly)
+
+    start_s = int(0.1 * N)
+    end_s = int(0.55 * N)
+    s_idx = np.argmax(ppg_s[start_s:end_s]) + start_s
+
+    start_d = s_idx + int(0.12 * rr_samples)
+    end_d = min(s_idx + int(0.90 * rr_samples), N)
+    
+    d4_zone = d4[start_d:end_d]
+    if len(d4_zone) > 0:
+        weights = np.linspace(1.0, 0.0, len(d4_zone))
+        d4_penalized = d4_zone * weights
+        d_idx = np.argmax(d4_penalized) + start_d
+    else:
+        d_idx = s_idx
+
+    spdp = (d_idx - s_idx) * dx
+    aix = ppg_s[d_idx] / ppg_s[s_idx] if ppg_s[s_idx] != 0 else np.nan
+    return spdp, aix
 
 def sum_of_2_gaussians(x, amp1, mean1, sigma1, amp2, mean2, sigma2):
     gauss1 = amp1 * np.exp(-(x - mean1)**2 / (2 * sigma1**2))

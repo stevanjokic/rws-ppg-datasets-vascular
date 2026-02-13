@@ -1,8 +1,4 @@
-# This script preprocesses the RWS PPG dataset for ML classification. It loads 'rws_ppg_classification_dataset.csv',
-# processes PPG signals (normalization, second derivative), fits 2- and 3-Gaussian models, and maps class labels (1–4 to 0–3).
-# It retains SPDP and AIx from the input dataset. Outputs a CSV with original data, normalized PPG templates, second derivatives,
-# class labels, Gaussian parameters, SPDP, and AIx for training.
-
+# This script preprocesses the RWS PPG dataset for ML classification.
 import numpy as np
 import pandas as pd
 from scipy import signal
@@ -31,6 +27,13 @@ def processrow(row):
     # Extract normalized PPG template for the entire segment
     template_ppg_norm = util.normalize_0_1(processed_ppg)
     sd_ppg = util.normalize_m1_1(util.sd5(processed_ppg))[startInd-3:endInd]
+    
+    try:        
+        hr_val = row.get("hr", 75) 
+        SPDP, AIx = util.calculate_spdp_aix(processed_ppg, fs, hr_val)
+    except:
+        SPDP = np.nan
+        AI = np.nan
 
     # Fit with 2 Gaussians
     try:
@@ -49,8 +52,13 @@ def processrow(row):
     # Map class 1–4 to label 0–3
     class_label = int(row["class"]) - 1
         
-    # Return original row data + normalized PPG template + second derivative + class label + Gaussian parameters
-    return list(row) + [util.array2str(template_ppg_norm)] + [util.array2str(sd_ppg)] + [class_label] + list(params_2g) + list(params_3g)
+    return (list(row) + 
+            [util.array2str(template_ppg_norm)] + 
+            [util.array2str(sd_ppg)] + 
+            [class_label] + 
+            [SPDP, AIx] + 
+            list(params_2g) + 
+            list(params_3g))
 
 # Load dataset
 df = pd.read_csv(inputFn)
@@ -69,7 +77,7 @@ for index, row in df.iterrows():
         print(f"Processed: {index + 1}/{total_rows} rows ({progress:.1f}%)")
 
 # Create new DataFrame with results
-columns = list(df.columns) + ["template_ppg_norm"] + ["sd_template_ppg_norm"] + ["class_label"] + [
+columns = list(df.columns) + ["template_ppg_norm", "sd_template_ppg_norm", "class_label", "SPDP", "AIx"] + [
     "amp1_2g", "mean1_2g", "sigma1_2g",
     "amp2_2g", "mean2_2g", "sigma2_2g",
     "amp1_3g", "mean1_3g", "sigma1_3g",
@@ -81,4 +89,4 @@ df_results = pd.DataFrame(results, columns=columns)
 # Save results to CSV
 df_results.to_csv(outputFn, index=True, index_label='index')
 
-print("Fitting completed! Results saved to:", outputFn)
+print("Fitting and feature extraction completed! Results saved to:", outputFn)
