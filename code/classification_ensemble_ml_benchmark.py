@@ -1,5 +1,5 @@
 # This script implements a machine learning pipeline for evaluating classifiers on the RWS PPG classification dataset. It performs the following tasks:
-# - Loads and preprocesses the dataset, using existing features including Systolic Peak to Diastolic Peak (SPDP) and Augmentation Index (AIx).
+# - Loads and preprocesses the dataset, using existing features.
 # - Conducts exploratory data analysis (EDA), generating summary statistics, class distribution, and feature correlation plots.
 # - Evaluates RandomForest, XGBoost, ExtraTrees, and MLP classifiers with hyperparameter tuning using GridSearchCV.
 # - Applies class balancing methods (none, SMOTE, RandomUnderSampler, SMOTEENN, SMOTE-Tomek) to handle imbalanced data.

@@ -218,6 +218,24 @@ The following scripts assess chronological age prediction performance using deep
 | `regression_dataset_stat.py` | Demographic and signal quality statistics |
 | `regression_dataset_collect.py` | Collect and balance samples for regression |
 
+### Model Explainability
+The following script implements **Integrated Gradients** to provide interpretability for the classification models by highlighting which parts of the PPG signal drive the model's decisions.
+
+| Script | Description |
+|--------|-------------|
+| `classification_integrated_gradients.py` | Integrated Gradients analysis for classifier on template PPG heartbeat signals |
+
+**Key features of the Integrated Gradients implementation:**
+
+- **Attribution maps**: Identifies which time points in the PPG signal contribute positively (red) or negatively (blue) to each class prediction
+- **Class-specific patterns**: Reveals distinct morphological features that differentiate between young and aged vascular phenotypes
+- **Comprehensive visualizations**:
+  - Individual sample analysis with signal and attribution overlay
+  - Average attribution profiles for each morphological class
+  - Attribution heatmaps showing patterns across all samples
+  - Publication-ready comprehensive figures combining multiple views
+
+
 ## Results
 Script execution will create `results/` folder where images, csv files will be placed.  
 All pre-generated results from the paper are publicly available at: https://usp2022.epizy.com/ppg/paper/  
@@ -264,6 +282,16 @@ results/
 ├── classification_xgboost_bootstrap_f1_ci_plot.png
 ├── classification_xgboost_per_class_f1_boxplot.png
 │ ⋮
+├── integrated_gradients_analysis/
+│   ├── ig_comprehensive_figure.png
+│   ├── ig_average_by_class.png
+│   ├── ig_attribution_heatmap.png
+│   ├── ig_sample_*.png
+│   ├── confusion_matrix.png
+│   ├── training_history.png
+│   ├── ig_results.csv
+│   └── summary_report.txt
+│ ⋮
 ├── benchmark_summary.csv
 ├── benchmark_table.tex
 ├── class_wise_performance.png
@@ -285,7 +313,7 @@ If you use these datasets, code, or any part of this repository in your research
 
 This repository contains the official implementation and datasets accompanying the paper:
 
-> **Jokić, S., Gligorić, N., Kartali, A., & Machidon, O. (2026).**  
+> **Jokić, S., Jokić, I., Gligorić, N., Kartali, A., & Machidon, O. (2026).**  
 > *Large-Scale Real-World Smartphone Photoplethysmography Datasets for Vascular Assessment.*  
 > **Electronics**, , . https://doi.org/10.3390/electronics1010000
 

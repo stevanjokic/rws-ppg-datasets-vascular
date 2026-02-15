@@ -152,8 +152,8 @@ class PPGDataLoader:
         self.signals = np.array(signals)
         self.labels = self.df.iloc[valid_indices]['class_label'].values
         
-        print(f"   ✅ Successfully parsed: {len(self.signals)} signals")
-        print(f"   ❌ Parse errors: {parse_errors}")
+        print(f"   Successfully parsed: {len(self.signals)} signals")
+        print(f"   Parse errors: {parse_errors}")
         print(f"   Signal shape: {self.signals.shape}")
         print(f"   Class distribution: {np.bincount(self.labels.astype(int))}")
         
@@ -161,7 +161,7 @@ class PPGDataLoader:
     
     def balance_classes(self) -> 'PPGDataLoader':
         """Balance classes by sampling equal number from each class."""
-        print("\n⚖️ Balancing classes...")
+        print("\n Balancing classes...")
         
         unique_classes = np.unique(self.labels)
         balanced_signals = []
@@ -178,7 +178,7 @@ class PPGDataLoader:
                                           replace=False)
             else:
                 # Sample with replacement if not enough samples
-                print(f"   ⚠️ Class {class_idx} has only {len(class_indices)} samples, using with replacement")
+                print(f"    Class {class_idx} has only {len(class_indices)} samples, using with replacement")
                 np.random.seed(self.config.RANDOM_SEED + int(class_idx))
                 selected = np.random.choice(class_indices, 
                                           self.config.SAMPLES_PER_CLASS, 
@@ -195,7 +195,7 @@ class PPGDataLoader:
         self.signals = self.signals[shuffle_idx]
         self.labels = self.labels[shuffle_idx]
         
-        print(f"   ✅ Balanced dataset: {len(self.signals)} samples")
+        print(f"   Balanced dataset: {len(self.signals)} samples")
         print(f"   New distribution: {np.bincount(self.labels.astype(int))}")
         
         return self
@@ -209,7 +209,7 @@ class PPGDataLoader:
             stratify=self.labels
         )
         
-        print(f"\n📊 Train-test split:")
+        print(f"\n Train-test split:")
         print(f"   Train: {len(X_train)} samples")
         print(f"   Test:  {len(X_test)} samples")
         
@@ -269,7 +269,7 @@ def train_model(model: nn.Module, X_train: np.ndarray, y_train: np.ndarray,
     """
     Train the MLP model with early stopping.
     """
-    print("\n🚀 Training MLP model...")
+    print("\n Training MLP model...")
     
     # Convert to tensors
     X_train_t = torch.FloatTensor(X_train).to(config.DEVICE)
@@ -339,7 +339,7 @@ def train_model(model: nn.Module, X_train: np.ndarray, y_train: np.ndarray,
     # Load best model
     model.load_state_dict(torch.load(f"{config.OUTPUT_DIR}/best_mlp_model.pth"))
     
-    print(f"\n✅ Training complete! Best validation accuracy: {max(history['val_acc']):.4f}")
+    print(f"\n Training complete! Best validation accuracy: {max(history['val_acc']):.4f}")
     
     return history
 
@@ -853,8 +853,8 @@ def main():
     config = Config()
     os.makedirs(config.OUTPUT_DIR, exist_ok=True)
     
-    print(f"\n📁 Output directory: {config.OUTPUT_DIR}")
-    print(f"💻 Device: {config.DEVICE}")
+    print(f"\n Output directory: {config.OUTPUT_DIR}")
+    print(f" Device: {config.DEVICE}")
     
     # Load and prepare data
     data_loader = PPGDataLoader(config)
@@ -867,7 +867,7 @@ def main():
         stratify=y_train
     )
     
-    print(f"\n📊 Final splits:")
+    print(f"\n Final splits:")
     print(f"   Train: {len(X_train)}")
     print(f"   Val:   {len(X_val)}")
     print(f"   Test:  {len(X_test)}")
@@ -935,7 +935,7 @@ def main():
     plt.close()
     
     # Compute Integrated Gradients
-    print("\n🧠 Computing Integrated Gradients...")
+    print("\n Computing Integrated Gradients...")
     ig = IntegratedGradients(model, config.DEVICE)
     
     # Select a subset of test samples for explanation
@@ -953,7 +953,7 @@ def main():
     # Compute attributions
     attributions = ig.explain_batch(X_explain_t, steps=config.IG_STEPS)
     
-    print(f"   ✅ Computed attributions for {len(attributions)} samples")
+    print(f"   Computed attributions for {len(attributions)} samples")
     print(f"   Attribution shape: {attributions.shape}")
     
     # Save numerical results
@@ -993,7 +993,7 @@ def main():
                                        pred_explain, conf_explain)
     
     # Generate summary report
-    print("\n📝 Generating summary report...")
+    print("\n Generating summary report...")
     with open(f"{config.OUTPUT_DIR}/summary_report.txt", 'w') as f:
         f.write("INTEGRATED GRADIENTS ANALYSIS SUMMARY\n")
         f.write("="*50 + "\n\n")
@@ -1022,7 +1022,7 @@ def main():
                 f.write(f"  Most influential regions: {sorted(top_regions)}\n")
                 f.write(f"  Peak attribution at: {np.argmax(np.abs(mean_attr))}\n")
     
-    print(f"\n✅ Analysis complete! Results saved to {config.OUTPUT_DIR}")
+    print(f"\n Analysis complete! Results saved to {config.OUTPUT_DIR}")
     print(f"\nGenerated files:")
     for f in sorted(os.listdir(config.OUTPUT_DIR)):
         print(f"   • {f}")
