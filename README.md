@@ -2,7 +2,7 @@
 
 This repository contains the official implementation of the paper:  
 **"Large-Scale Real-World Smartphone Photoplethysmography Datasets for Vascular Assessment"**  
-(doi: https://doi.org/10.3390/electronics1010000)
+(Jokić, S., Jokić, I., Gligorić, N., Kartali, A., & Machidon, O. M. (2026). Large-Scale Real-World Smartphone Photoplethysmography Datasets for Vascular Assessment. Electronics, 15(5), 988. https://doi.org/10.3390/electronics15050988)
 
 It includes:
 - Two smartphone PPG datasets (classification + regression)
@@ -304,7 +304,8 @@ results/
 ``` 
 
 ---
-If you use these datasets, code, or any part of this repository in your research, please cite the original paper with doi: https://doi.org/10.3390/electronics1010000
+If you use these datasets, code, or any part of this repository in your research, please cite the original paper :  
+Jokić, S., Jokić, I., Gligorić, N., Kartali, A., & Machidon, O. M. (2026). Large-Scale Real-World Smartphone Photoplethysmography Datasets for Vascular Assessment. Electronics, 15(5), 988. https://doi.org/10.3390/electronics15050988
 
 ### Real-World Smartphone PPG Dataset and Machine Learning Code
 
@@ -315,7 +316,7 @@ This repository contains the official implementation and datasets accompanying t
 
 > **Jokić, S., Jokić, I., Gligorić, N., Kartali, A., & Machidon, O. (2026).**  
 > *Large-Scale Real-World Smartphone Photoplethysmography Datasets for Vascular Assessment.*  
-> **Electronics**, , . https://doi.org/10.3390/electronics1010000
+> **Electronics**, 15(5), 988. https://doi.org/10.3390/electronics15050988
 
 **If you use this code, datasets, or any derivative work in your research, you must cite the above paper.**
 
